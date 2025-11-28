@@ -1,13 +1,12 @@
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 
 
-void setup() {
+void setup_wifi() {
     // WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP (standAlone, pour ce connecter et AP c'est Access point)
 
     // it is a good practice to make sure your code sets wifi mode how you want it.
 
     // put your setup code here, to run once:
-    Serial.begin(115200);
     
     //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
     WiFiManager wm;
@@ -35,8 +34,4 @@ void setup() {
         Serial.println("connected...yeey :)");
     }
 
-}
-
-void loop() {
-    // put your main code here, to run repeatedly:   
 }
