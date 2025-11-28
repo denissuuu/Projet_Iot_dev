@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 #include <Arduino.h>
 
 
@@ -27,4 +25,3 @@ void loop() {
   #endif
 }
 //coucou
->>>>>>> 64dea4e1de603d963d41fb0beec922b208480709
