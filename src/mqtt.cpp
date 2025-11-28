@@ -1,27 +1,27 @@
 #include <Arduino.h>
-#include <DHT.h>
-#include <WiFi.h>
+#include <wifi_access.h>
 #include <PubSubClient.h>
 
 // MQTT Broker details
 #define mqtt_server  "broker.emqx.io" // check with ipconfig in cmd, choose IPv4 address
+
+// Pins
+#if defined(D_DHT)
 #define Humidity_topic  "ynov/rennes/damien/humidity"
 #define temperature_topic "ynov/rennes/damien/temperature"
 #define relay_topic "ynov/rennes/damien/status"
-
-// Pins
+#include <DHT.h>
 #define DHTPIN 23           // Pin where the DHT11 is connected
 #define DHTTYPE DHT11      // DHT11 sensor
 #define RELAY_PIN 26       // Pin where the relay is connected
 
 // DHT Sensor setup
 DHT dht(DHTPIN, DHTTYPE);
-void setup_wifi();
 
 bool relayState = false;
 unsigned long previousMillis = 0;
 const long interval = 2000; // 2 seconds on/off cycle
-
+#endif
 // WiFi and MQTT client
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -42,12 +42,11 @@ void reconnect() {
 }
 
 void setup() {
-Serial.begin(115200);
-  // Initialize the DHT sensor
+#if defined(D_DHT) // Initialize the DHT sensor
   dht.begin();
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, LOW);
-
+#endif
   // Setup WiFi and MQTT
   setup_wifi();
   client.setServer(mqtt_server, 1883);
@@ -58,7 +57,7 @@ void loop() {
     reconnect();
   }
   client.loop();
-
+#if defined(D_DHT)
   // Read from sensors
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
@@ -99,7 +98,7 @@ void loop() {
     Serial.println(relayStatus);
     client.publish(relay_topic, relayStatus.c_str(), true);
   }
-
+#endif
   // Delay before next reading
   delay(5000); // Publish every 5 seconds
 }

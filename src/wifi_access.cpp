@@ -1,5 +1,4 @@
-#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
-
+#include <wifi_access.h>
 
 void setup_wifi() {
     // WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP (standAlone, pour ce connecter et AP c'est Access point)
