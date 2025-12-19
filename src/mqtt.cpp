@@ -26,16 +26,22 @@ const long interval = 2000; // 2 seconds on/off cycle
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+
 void reconnect() {
-  // Loop until we're reconnected
   while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    if (client.connect("jroulematetesurleclavier")) {
-      Serial.println("connected");
+    Serial.print("Tentative MQTT...");
+    // ✅ Remplace getChipId par getEfuseMac
+    String clientId = "ESP32-" + String(ESP.getEfuseMac(), HEX);
+
+    
+    
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connecté!");
+      client.subscribe("ynov/tempera/");
+      client.publish("ynov/tempera/status", "online");
     } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      Serial.print("échec, rc="); Serial.print(client.state());
+      Serial.println(" retry in 5s");
       delay(5000);
     }
   }

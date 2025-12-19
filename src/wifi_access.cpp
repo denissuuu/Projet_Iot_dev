@@ -32,5 +32,4 @@ void setup_wifi() {
         //if you get here you have connected to the WiFi    
         Serial.println("connected...yeey :)");
     }
-
 }
