@@ -1,0 +1,226 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projet_Iot_Web</title>
+<link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body>
+    <header>
+        <div class="header-top">
+            <h1>Projet ESP 32</h1>
+            <div class="user-menu">
+                <span class="username">👤 {{ username }}</span>
+                <a href="/logout/" class="btn-logout">Déconnexion</a>
+            </div>
+        </div>
+        <div class="bande"></div>
+        <h2 class="presentation">Présentation</h2>
+        <p>La plateforme web à pour objectif de permettre la visualisation, le suivi et l'analyse des données collectées par le système d'analyse d'environnement intérieur.
+        Elle servira d'interface utilisateur entre le réseau d'objets connectés et les utilisateurs finaux.</p>
+    </header>
+
+    <div class="container">
+        <h1 style="text-align: center; color: #ecf0f1; margin-bottom: 30px; font-size: 2.5rem; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);">Tableau de bord - Analyse d'environnement</h1>
+
+        <section class="cards">
+            <div class="card">
+                <div class="card-icon">🌡️</div>
+                <h3>Température</h3>
+                <p class="value" id="temperature-value">
+                    {% if sensor_data.temperature %}{{ sensor_data.temperature.latest|floatformat:1 }} °C{% else %}-- °C{% endif %}
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-icon">💧</div>
+                <h3>Humidité</h3>
+                <p class="value" id="humidity-value">
+                    {% if sensor_data.humidity %}{{ sensor_data.humidity.latest|floatformat:1 }} %{% else %}-- %{% endif %}
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-icon">👤</div>
+                <h3>Présence</h3>
+                <p class="value" id="presence-value">
+                    {% if sensor_data.presence %}
+                        {% if sensor_data.presence.latest >= 1 %}Oui{% else %}Non{% endif %}
+                    {% else %}-- O/N{% endif %}
+                </p>
+            </div>
+        </section>
+
+        <section class="Historique">
+        <h2>Historique des mesures</h2>
+
+        <div class="filters">
+            <select id="filter-sensor" onchange="applyFilters()">
+                <option value="">Tous les capteurs</option>
+                <option value="temperature" {% if current_filter_sensor == 'temperature' %}selected{% endif %}>Température</option>
+                <option value="humidity" {% if current_filter_sensor == 'humidity' %}selected{% endif %}>Humidité</option>
+                <option value="presence" {% if current_filter_sensor == 'presence' %}selected{% endif %}>Présence</option>
+            </select>
+
+            <select id="filter-period" onchange="applyFilters()">
+                <option value="">Toute la période</option>
+                <option value="24h" {% if current_filter_period == '24h' %}selected{% endif %}>Dernières 24h</option>
+                <option value="7j" {% if current_filter_period == '7j' %}selected{% endif %}>7 derniers jours</option>
+                <option value="30j" {% if current_filter_period == '30j' %}selected{% endif %}>30 derniers jours</option>
+            </select>
+        </div>
+        <div class="table-container">
+            <table id="history-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)" class="sortable">
+                            Date et heure <span class="sort-icon">↕</span>
+                        </th>
+                        <th onclick="sortTable(1)" class="sortable">
+                            Capteur <span class="sort-icon">↕</span>
+                        </th>
+                        <th onclick="sortTable(2)" class="sortable">
+                            Valeur <span class="sort-icon">↕</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if history_data %}
+                        {% for measurement in history_data %}
+                        <tr data-timestamp="{{ measurement.timestamp_iso }}">
+                            <td>
+                                <span class="date-time">{{ measurement.timestamp|date:"d/m/Y" }}</span>
+                                <span class="time-only">{{ measurement.timestamp|date:"H:i:s" }}</span>
+                            </td>
+                            <td>
+                                <span class="sensor-badge sensor-{{ measurement.sensor_type_raw }}">
+                                    {% if measurement.sensor_type_raw == 'temperature' %}
+                                    {% elif measurement.sensor_type_raw == 'humidity' %}
+                                    {% elif measurement.sensor_type_raw == 'presence' %}
+                                    {% else %}{% endif %}
+                                    {{ measurement.sensor_type }}
+                                </span>
+                            </td>
+                            <td class="value-cell">
+                                <strong>{{ measurement.value }}</strong>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr class="no-data-row">
+                            <td colspan="3" class="no-data">
+                                <div class="no-data-content">
+                                    <span class="no-data-icon">📊</span>
+                                    <p>Aucune mesure disponible</p>
+                                    <small>Les données apparaîtront ici une fois que les capteurs enverront des mesures.</small>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        {% if history_data %}
+        <div class="table-info">
+            <p>Affichage de <strong>{{ history_data|length }}</strong> mesure{{ history_data|length|pluralize }}</p>
+        </div>
+        {% endif %}
+        </section>
+    </div>
+
+    <footer style="margin-top: 50px; padding: 20px; text-align: center; color: #ffffff;">
+        <p>© 2025 Projet IoT - Système d'analyse d'environnement</p>
+    </footer>
+
+    <script>
+        let sortDirection = {};
+        
+        function applyFilters() {
+            const sensor = document.getElementById('filter-sensor').value;
+            const period = document.getElementById('filter-period').value;
+            const params = new URLSearchParams();
+            if (sensor) params.append('sensor', sensor);
+            if (period) params.append('period', period);
+            window.location.search = params.toString();
+        }
+        
+        function sortTable(columnIndex) {
+            const table = document.getElementById('history-table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr:not(.no-data-row)'));
+            
+            // Vérifier s'il y a des données
+            if (rows.length === 0) return;
+            
+            // Initialiser la direction si nécessaire
+            if (!sortDirection[columnIndex]) {
+                sortDirection[columnIndex] = 'asc';
+            } else {
+                sortDirection[columnIndex] = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
+            }
+            
+            // Trier les lignes
+            rows.sort((a, b) => {
+                // Tri spécial pour les dates (colonne 0)
+                if (columnIndex === 0) {
+                    const aTimestamp = a.getAttribute('data-timestamp');
+                    const bTimestamp = b.getAttribute('data-timestamp');
+                    if (aTimestamp && bTimestamp) {
+                        const aDate = new Date(aTimestamp);
+                        const bDate = new Date(bTimestamp);
+                        return sortDirection[columnIndex] === 'asc' ? aDate - bDate : bDate - aDate;
+                    }
+                }
+                
+                // Tri pour les valeurs numériques (colonne 2)
+                if (columnIndex === 2) {
+                    const aText = a.cells[columnIndex].textContent.trim();
+                    const bText = b.cells[columnIndex].textContent.trim();
+                    const aNum = parseFloat(aText);
+                    const bNum = parseFloat(bText);
+                    
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return sortDirection[columnIndex] === 'asc' ? aNum - bNum : bNum - aNum;
+                    }
+                }
+                
+                // Tri alphabétique pour les autres colonnes
+                const aText = a.cells[columnIndex].textContent.trim();
+                const bText = b.cells[columnIndex].textContent.trim();
+                
+                if (sortDirection[columnIndex] === 'asc') {
+                    return aText.localeCompare(bText, 'fr', { numeric: true });
+                } else {
+                    return bText.localeCompare(aText, 'fr', { numeric: true });
+                }
+            });
+            
+            // Réorganiser les lignes dans le DOM
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Mettre à jour les icônes de tri
+            const headers = table.querySelectorAll('th');
+            headers.forEach((header, index) => {
+                const icon = header.querySelector('.sort-icon');
+                if (icon) {
+                    if (index === columnIndex) {
+                        icon.textContent = sortDirection[columnIndex] === 'asc' ? '↑' : '↓';
+                        icon.style.opacity = '1';
+                    } else {
+                        icon.textContent = '↕';
+                        icon.style.opacity = '0.7';
+                    }
+                }
+            });
+        }
+        
+        // Rafraîchir la page toutes les 5 secondes pour mettre à jour les données
+        setInterval(function() {
+            location.reload();
+        }, 5000);
+    </script>
+</body>
+</html>

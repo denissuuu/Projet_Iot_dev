@@ -1,0 +1,7 @@
+<form method="POST">
+    {% csrf_token %}
+    <h2>Vérification de sécurité</h2>
+    <p>Entrez le code affiché sur votre kit :</p>
+    <input type="text" name="temp_code" placeholder="Ex: 123456" required>
+    <button type="submit">Valider et Entrer</button>
+</form>

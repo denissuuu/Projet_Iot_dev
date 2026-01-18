@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ajouter un appareil - Projet IoT</title>
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+</head>
+<body style="background: #2c3e50; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: white;">
+
+    <div style="background: white; color: #222; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; text-align: center;">
+        <h1 style="margin-bottom: 20px;">📦 Nouvel Appareil</h1>
+        <p style="color: #666; margin-bottom: 30px;">Entrez le code à 6 chiffres affiché sur votre kit ESP32 (ou MQTTX) pour le lier à votre compte.</p>
+
+        {% if error %}
+            <div style="background: #fee; color: #e74c3c; padding: 10px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #fab1a0;">
+                ⚠️ {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <div style="margin-bottom: 20px;">
+                <input type="text" name="pairing_code" placeholder="Ex: 123456" 
+                       style="width: 100%; padding: 15px; border-radius: 10px; border: 2px solid #ddd; font-size: 1.2rem; text-align: center; letter-spacing: 5px;" 
+                       required maxlength="6">
+            </div>
+            <button type="submit" style="width: 100%; padding: 15px; background: #34495e; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s;">
+                Lier mon appareil
+            </button>
+        </form>
+
+        <div style="margin-top: 20px;">
+            <a href="/logout/" style="color: #999; text-decoration: none; font-size: 0.9rem;">Annuler et se déconnecter</a>
+        </div>
+    </div>
+
+</body>
+</html>

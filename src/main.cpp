@@ -7,17 +7,21 @@
 #include "PIR.h"
 #include "BootCounter.h"
 
-// MQTT CONFIGURATION 
+// Configuration MQTT
 const char* mqtt_server = "broker.emqx.io";
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+// Timers et Variables
 unsigned long dernierEnvoiCode = 0;
+unsigned long prevDHTMillis = 0;
 const long intervalleCode = 60000;
+const long intervalleData = 10000;
+
 String codeActuel = "";
-
+float lastT = 0.0, lastH = 0.0;
+char lastP = 'N'; 
 BootCounter bc; 
-
 
 #if defined(D_DHT)
 #include <DHT.h>
@@ -25,19 +29,17 @@ BootCounter bc;
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 #define RELAY_PIN 26
-bool relayState = false;
-unsigned long prevDHTMillis = 0;
 #endif
 
+// Fonction de reconnexion MQTT
 void reconnect() {
     while (!client.connected()) {
-        Serial.print("Tentative MQTT...");
+        Serial.print("MQTT Connexion...");
         String clientId = "ESP32-" + String((uint32_t)ESP.getEfuseMac(), HEX);
         if (client.connect(clientId.c_str())) {
-            Serial.println("connecté!");
+            Serial.println("OK");
             client.publish("ynov/status", "online");
         } else {
-            Serial.print("échec, rc=");
             delay(5000);
         }
     }
@@ -45,90 +47,74 @@ void reconnect() {
 
 void setup() {
     Serial.begin(115200);
-    
-    // reset boot counter
-    bc.begin();
-    Serial.print("Nombre de boots : ");
-    Serial.println(bc.getCount());
-
-    // boot reset 
+    bc.begin(); // Sécurité boot
     if (bc.shouldResetWifi()) {
-        Serial.println("Reset déclenché par 5 boots consécutifs !");
         bc.resetEverything(); 
         WiFiManager wm;
         wm.resetSettings();   
         ESP.restart();        
     }
-
     randomSeed(analogRead(0));
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-    
     init_PIR(); 
-
-    setup_wifi();
-    
-    bc.resetBootCounter();
-
-    client.setServer(mqtt_server, 1883);
-
     #if defined(D_DHT)
     dht.begin();
     pinMode(RELAY_PIN, OUTPUT);
     #endif
-
-    Serial.println("Système prêt !");
+    setup_wifi();
+    bc.resetBootCounter();
+    client.setServer(mqtt_server, 1883);
 }
 
 void loop() {
-    if (!client.connected()) {
-        reconnect();
-    }
+    if (!client.connected()) reconnect();
     client.loop();
 
     unsigned long maintenant = millis();
+    String macID = String((uint32_t)ESP.getEfuseMac(), HEX);
 
-    // 1. LOGIQUE PAIRING
+    // 1. Envoi Code Pairing (60s)
     if (maintenant - dernierEnvoiCode >= intervalleCode || codeActuel == "") {
         dernierEnvoiCode = maintenant;
         codeActuel = generate_code();
         display_code(codeActuel);
-        String topic = "ynov/appairage/" + String((uint32_t)ESP.getEfuseMac(), HEX) + "/code";
-        client.publish(topic.c_str(), codeActuel.c_str(), true);
+        String tPairing = "ynov/appairage/" + macID + "/code";
+        client.publish(tPairing.c_str(), codeActuel.c_str(), true);
     }
 
-    // 2. LOGIQUE PIR (Mouvement)
+    // 2. Détection Mouvement (PIR sur PIN 27)
     if (motionDetected) {
         motionDetected = false;
+        lastP = 'Y';
         int count = EEPROM.read(EEPROM_ADDR);
         count++;
         EEPROM.write(EEPROM_ADDR, count);
         EEPROM.commit();
-
-        Serial.print("Mouvement détecté ! Compteur: ");
-        Serial.println(count);
-        
-        // Envoi MQTT du mouvement
-        String mTopic = "ynov/rennes/damien/motion";
-        client.publish(mTopic.c_str(), String(count).c_str());
-
         if (count >= RESET_THRESHOLD) {
-            Serial.println("Seuil atteint ! Reset WiFi...");
             WiFiManager wm;
             wm.resetSettings();
-            EEPROM.write(EEPROM_ADDR, 0); // Reset du compteur
+            EEPROM.write(EEPROM_ADDR, 0);
             EEPROM.commit();
             ESP.restart();
         }
     }
 
-    // 3. LOGIQUE DHT
-    #if defined(D_DHT)
-    if (maintenant - prevDHTMillis >= 5000) {
+    // 3. Envoi Django (10s)
+    if (maintenant - prevDHTMillis >= intervalleData) {
         prevDHTMillis = maintenant;
+        #if defined(D_DHT)
         float t = dht.readTemperature();
-        if (!isnan(t)) {
-            client.publish("ynov/rennes/damien/temperature", String(t).c_str());
-        }
+        float h = dht.readHumidity();
+        if (!isnan(t)) lastT = t;
+        if (!isnan(h)) lastH = h;
+        #endif
+
+        String dataStr = String(lastT, 1) + "°C, " + String(lastH, 1) + "%, " + lastP;
+        String tDjango = "ynov/home/" + macID + "/sensors";
+        String payloadJSON = "{\"msg\": \"" + dataStr + "\"}";
+
+        client.publish(tDjango.c_str(), payloadJSON.c_str());
+        Serial.println("Vers Django: " + payloadJSON);
+        lastP = 'N'; 
     }
-    #endif
 }
