@@ -1,32 +1,18 @@
-// #include <EEPROM.h>
-// #include "PIR.h"
+#include "PIR.h"
+#include <EEPROM.h>
 
-// #define EEPROM_ADDR 0
-// #define RESET_THRESHOLD 5
+volatile bool motionDetected = false;
 
-// void setup() {
-//   Serial.begin(115200);
-//   EEPROM.begin(512);
+void IRAM_ATTR handleMotion() {
+    motionDetected = true;
+}
 
-//   pinMode(PIR_PIN, INPUT);
-//   attachInterrupt(digitalPinToInterrupt(PIR_PIN), handleMotion, RISING);
-  
-//   int count = EEPROM.read(EEPROM_ADDR);
-//   Serial.print("Current count: ");
-//   Serial.println(count);
-// }
-
-// void loop() {
-//   if (motionDetected) {
-//     motionDetected = false;
-
-//     int count = EEPROM.read(EEPROM_ADDR);
-//     count++;
-//     Serial.print("Motion detected count: ");
-//     Serial.println(count);
-
-//     if (count >= RESET_THRESHOLD) {
-//       Serial.println("Reset threshold reached! Resetting WiFi settings...");
-// }
-//   }
-// }
+void init_PIR() {
+    EEPROM.begin(512);
+    pinMode(PIR_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIR_PIN), handleMotion, RISING);
+    
+    int count = EEPROM.read(EEPROM_ADDR);
+    Serial.print("PIR Initialisé. Compteur actuel en EEPROM: ");
+    Serial.println(count);
+}

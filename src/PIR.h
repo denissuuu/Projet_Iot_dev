@@ -1,10 +1,15 @@
-// #ifndef PIR_H
-// #define PIR_H
+#ifndef PIR_H
+#define PIR_H
 
-// #define PIR_PIN 21  
+#include <Arduino.h>
 
-// extern volatile bool motionDetected;
+#define PIR_PIN 27  // CHANGÉ de 21 à 27 pour éviter le conflit avec l'OLED
+#define EEPROM_ADDR 0
+#define RESET_THRESHOLD 5
 
-// void IRAM_ATTR handleMotion();
+extern volatile bool motionDetected;
 
-// #endif
+void IRAM_ATTR handleMotion();
+void init_PIR(); // Nouvelle fonction pour le setup
+
+#endif
