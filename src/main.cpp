@@ -5,6 +5,7 @@
 #include "pairing.h"
 #include "wifi_access.h"
 #include "PIR.h"
+#include "BootCounter.h"
 
 // MQTT CONFIGURATION 
 const char* mqtt_server = "broker.emqx.io";
@@ -14,6 +15,9 @@ PubSubClient client(espClient);
 unsigned long dernierEnvoiCode = 0;
 const long intervalleCode = 60000;
 String codeActuel = "";
+
+BootCounter bc; 
+
 
 #if defined(D_DHT)
 #include <DHT.h>
@@ -41,15 +45,30 @@ void reconnect() {
 
 void setup() {
     Serial.begin(115200);
-    randomSeed(analogRead(0));
+    
+    // reset boot counter
+    bc.begin();
+    Serial.print("Nombre de boots : ");
+    Serial.println(bc.getCount());
 
-    // Initialisation OLED (même si noir, on garde la logique)
+    // boot reset 
+    if (bc.shouldResetWifi()) {
+        Serial.println("Reset déclenché par 5 boots consécutifs !");
+        bc.resetEverything(); 
+        WiFiManager wm;
+        wm.resetSettings();   
+        ESP.restart();        
+    }
+
+    randomSeed(analogRead(0));
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     
-    // Initialisation PIR
-    init_PIR();
+    init_PIR(); 
 
     setup_wifi();
+    
+    bc.resetBootCounter();
+
     client.setServer(mqtt_server, 1883);
 
     #if defined(D_DHT)
