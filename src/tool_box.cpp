@@ -1,7 +1,7 @@
-timer
+// timer
 
- unsigned long currentMillis = millis();
+//  unsigned long currentMillis = millis();
 
-  if (currentMillis - previousMillis >= interval) {
-    // save the last time you blinked the LED
-    previousMillis = currentMillis;
+//   if (currentMillis - previousMillis >= interval) {
+//     // save the last time you blinked the LED
+//     previousMillis = currentMillis;
